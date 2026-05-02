@@ -1,0 +1,191 @@
+npx create-next-app@latest bus-app
+cd bus-app
+npm install leaflet react-leaflet
+"use client";
+
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
+const MapView = dynamic(() => import("../components/MapView"), {
+  ssr: false,
+});
+
+const routes = [
+  {
+    id: 1,
+    operator: "BEST",
+    from: "Mumbai CST",
+    to: "Thane",
+    departure: "08:00",
+    arrival: "09:30",
+    price: 40,
+    coords: [
+      [18.9398, 72.8355],
+      [19.0176, 72.8478],
+      [19.2183, 72.9781],
+    ],
+  },
+  {
+    id: 2,
+    operator: "Private",
+    from: "Navi Mumbai",
+    to: "Panvel",
+    departure: "10:00",
+    arrival: "11:00",
+    price: 30,
+    coords: [
+      [19.033, 73.0297],
+      [18.9894, 73.1175],
+    ],
+  },
+];
+
+function getDistance(coords: any[]) {
+  let total = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const [lat1, lon1] = coords[i];
+    const [lat2, lon2] = coords[i + 1];
+
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+    total += R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  }
+  return total.toFixed(1);
+}
+
+export default function Home() {
+  const [selected, setSelected] = useState<any>(null);
+
+  return (
+    <div className="h-screen flex flex-col bg-gray-100">
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur shadow px-6 py-4">
+        <div className="flex flex-col md:flex-row gap-3">
+          <input placeholder="From" className="input" />
+          <input placeholder="To" className="input" />
+          <input type="date" className="input" />
+          <button className="btn">Search</button>
+        </div>
+      </header>
+
+      {/* MAIN */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* LEFT */}
+        <div className="w-full md:w-2/5 overflow-y-auto p-4 space-y-4">
+
+          {/* FILTER */}
+          <div className="card">
+            <h2 className="font-semibold mb-2">Filters</h2>
+            <input type="range" className="w-full" />
+          </div>
+
+          {/* RESULTS */}
+          {routes.map((bus) => (
+            <div
+              key={bus.id}
+              onClick={() => setSelected(bus)}
+              className="card hover:shadow-xl hover:scale-[1.02] transition cursor-pointer"
+            >
+              <div className="flex justify-between">
+                <h3 className="font-semibold">{bus.operator}</h3>
+                <span className="text-blue-600 font-bold">₹{bus.price}</span>
+              </div>
+
+              <div className="mt-2 text-sm text-gray-600">
+                {bus.from} → {bus.to}
+              </div>
+
+              <div className="flex justify-between mt-2 text-sm">
+                <span>{bus.departure}</span>
+                <span>{bus.arrival}</span>
+              </div>
+
+              <div className="mt-2 text-xs text-gray-500">
+                {getDistance(bus.coords)} KM
+              </div>
+
+              <div className="flex gap-2 mt-3">
+                <button className="btn-outline">View Map</button>
+                <a
+                  href="https://www.redbus.in"
+                  target="_blank"
+                  className="btn"
+                >
+                  Book
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* RIGHT MAP */}
+        <div className="hidden md:block md:w-3/5 h-full z-0">
+          <MapView selected={selected} />
+        </div>
+      </div>
+    </div>
+  );
+}
+"use client";
+
+import {
+  MapContainer,
+  TileLayer,
+  Polyline,
+  Marker,
+  Popup,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+
+export default function MapView({ selected }: any) {
+  const center: [number, number] = [19.076, 72.8777];
+
+  return (
+    <MapContainer center={center} zoom={11} className="h-full w-full">
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      {selected && (
+        <>
+          <Polyline positions={selected.coords} />
+          {selected.coords.map((c: any, i: number) => (
+            <Marker key={i} position={c}>
+              <Popup>Stop {i + 1}</Popup>
+            </Marker>
+          ))}
+        </>
+      )}
+    </MapContainer>
+  );
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.input {
+  @apply border rounded-xl px-4 py-2 w-full;
+}
+
+.btn {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700;
+}
+
+.btn-outline {
+  @apply border px-4 py-2 rounded-xl hover:bg-gray-100;
+}
+
+.card {
+  @apply bg-white p-5 rounded-2xl shadow-sm border;
+}
+npm run dev
